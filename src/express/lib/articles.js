@@ -2,6 +2,9 @@
 
 // Набор общих функций для работы с публикациями
 
+const {StatusCodes} = require(`http-status-codes`);
+const {ensureArray} = require(`../../utils`);
+const api = require(`../api`).getAPI();
 const dayjs = require(`dayjs`);
 
 // Доработка одиночной публикации для шаблонизации
@@ -31,27 +34,59 @@ const getCommentsList = (articles) => articles.reduce((acc, article) => {
   return acc;
 }, []);
 
-// Обработка данных публикации для постинга
-const preprocessPostedArticle = ({body, file = {}}) => {
+// Отправляет объявление и предзаполняет доп. данные для форм из адресной строки
+const sendArticle = async (req, res) => {
+  const {body, file, params: {id = null}} = req;
+  const context = `/articles/${id ? `edit/${id}` : `add`}`;
   const date = body.date ? dayjs(body.date, `DD.MM.YYYY`) : dayjs();
   const data = {
-    title: body.title,
-    announce: body.announce,
+    ...body,
+    peopleId: 1, // временная заглушка для прохождения валидации
+    categories: ensureArray(body.categories).map(Number).filter(Boolean),
     fullText: body.text,
     pubDate: date.format(`YYYY-MM-DD HH:mm:ss`),
-    Comments: []
+    Comments: [],
+    picture: file ? file.filename : body.picture_uploaded // если пользователь не загрузил новую картинку, оставляем прежнюю
   };
-  if (file.filename) {
-    data.picture = file.filename;
+  delete data.picture_uploaded;
+
+  try {
+    if (id) {
+      await api.updateOffer(id, data);
+      res.redirect(context);
+    } else {
+      await api.createOffer(data);
+      res.status(StatusCodes.CREATED).redirect(`/my`);
+    }
+  } catch (err) {
+    // передаем ранее заполненные данные для пробрасывания в форму
+    const payloadStr = encodeURIComponent(JSON.stringify(data));
+
+    const errorStr = encodeURIComponent(JSON.stringify(err.response.data));
+
+    res.redirect(`${context}?payload=${payloadStr}&errors=${errorStr}`);
   }
-  if (body.categories) {
-    data.category = body.categories.join(`\n`);
+};
+
+const renderPostForm = async (req, res) => {
+  const {id} = req.params;
+  const {payload = `{}`, errors = `{}`} = req.query;
+  const categories = await api.getCategories();
+  let article = JSON.parse(payload);
+  if (id) {
+    const existedArticle = await api.getArticle(id);
+    article = {...existedArticle, ...article};
   }
-  return data;
+  res.render(`post-form`, {
+    article,
+    categories,
+    errors: JSON.parse(errors)
+  });
 };
 
 module.exports = {
   getCommentsList,
   modifyArticle,
-  preprocessPostedArticle
+  renderPostForm,
+  sendArticle
 };

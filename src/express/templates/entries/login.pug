@@ -14,19 +14,19 @@ block main
           li.popup__tab.popup__tab--log-in
             button.popup__tab-switcher.button(type=`button`) Войти
         .popup__form.popup__form--active.form.form--register
-          form(action=`#`, method=`get`)
+          form(action=`#`, method=`post`, enctype=`multipart/form-data`)
             .form__field
               label
-                input(type=`email`, placeholder=`Электронная почта`, required=``)
+                input(type=`email`, placeholder=`Электронная почта`, maxlength=MaxValue.EMAIL, required=``)
             .form__field
               label
-                input(type=`text`, placeholder=`Имя`, required=``)
+                input(type=`text`, placeholder=`Имя`, maxlength=MaxValue.EMAIL, required=``)
             .form__field
               label
-                input(type=`text`, placeholder=`Фамилия`)
+                input(type=`text`, placeholder=`Фамилия`, maxlength=MaxValue.EMAIL, required=``)
             .form__field
               label
-                input(type=`password`, placeholder=`Пароль`, required=``)
+                input(type=`password`, placeholder=`Пароль`, minlength=MinValue.PASSWORD, maxlength=MaxValue.PASSWORD, required=``)
             .form__field
               label
                 input(type=`password`, placeholder=`Повтор пароля`, required=``)
